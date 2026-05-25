@@ -1,7 +1,7 @@
 
 # RKE2 Rancher with CNI Cilium, Ingress Controller Traefik and Metallb for VIP
 
-
+##### Customização do Ambiente
 ```
 mkdir $HOME/.kube
 sudo cp -i /etc/rancher/rke2/rke2.yaml $HOME/.kube/config
@@ -42,7 +42,7 @@ etcd-expose-metrics: true
 cni:
 - cilium
 tls-san:
-  - rke2-teste.sesp.mt.gov.br
+  - rke2.mydomain.com.br
   - 172.16.118.48 #VIP RANCHER
   - 172.16.118.49 #VIP KUBERNETES
 ingress-controller: traefik
@@ -201,7 +201,7 @@ etcd-expose-metrics: true
 cni:
 - cilium
 tls-san:
-  - rke2.seguranca.local
+  - rke2.mydomain.com.br
   - 172.17.125.17 #VIP RANCHER
   - 172.17.125.18 #VIP KUBERNETES
 ingress-controller: traefik
@@ -254,15 +254,41 @@ helm upgrade -i cert-manager jetstack/cert-manager \
 ```
 Aguarde a finalização dos pods.
 
+### Certificates
+Crie os arquivos contendo certificado, chave e o certificado ca.
+```
+certificate -> tls.crt 
+key         -> tls.key
+ca cert     -> ca-additional.pem
+```
+#### Secret com Certificados Privados
+##### Crie o namespace
+```
+kubectl create ns cattle-system
+```
+##### Crie a secret `tls-rancher-ingress`
+```
+kubectl -n cattle-system create secret tls tls-rancher-ingress \
+--cert=tls.crt --key=tls.key
+```
+##### Crie a secret `tls-ca-additional`
+```
+kubectl -n cattle-system create secret generic tls-ca-additional \
+--from-file=ca-additional.pem=ca-additional.pem
+```
+
+
 #### Rancher 
 ```
 helm upgrade -i rancher rancher-latest/rancher \
 --namespace cattle-system \
 --create-namespace \
---set hostname=rke2.mydomain.local \
+--set hostname=rke2.mydomain.com.br \
 --set replicas=3 \
 --set ingress.ingressClassName=traefik \
 --set bootstrapPassword=rancheradmin \
+--set ingress.tls.source=secret \
+--set additionalTrustedCAs=true \
 --wait
 ```
 Aguarde a finalização dos pods.
